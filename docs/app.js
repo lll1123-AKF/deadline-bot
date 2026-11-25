@@ -235,6 +235,7 @@ const LEVELS = [
   ['7 天内', ''], ['7 天以上', ''], ['无截止日', '']
 ];
 const STATUS_TEXT = { pending: '待开始', in_progress: '进行中', done: '已完成', cancelled: '已取消' };
+const PRIORITY_TEXT = { high: '高', normal: '普通', low: '低' };
 
 function toast(msg) {
   const el = document.getElementById('toast');
@@ -284,11 +285,11 @@ function taskCard(t, index, showReason) {
       <div class="detail-grid">
         <div><span>来源</span>${escapeHtml(t.source)}</div>
         <div><span>类别</span>${escapeHtml(t.category)}</div>
-        <div><span>优先级</span>${escapeHtml(t.priority)}</div>
+        <div><span>优先级</span>${escapeHtml(PRIORITY_TEXT[t.priority] || t.priority)}</div>
         <div><span>状态</span>${escapeHtml(STATUS_TEXT[t.status] || t.status)}</div>
       </div>
       <div class="progress-line"><div class="bar"><i style="width:${t.progress}%"></i></div><span class="pct">${t.progress}%</span></div>
-      ${showReason ? `<div class="reason">排序分数 ${score} · 理由：${escapeHtml(reason)}</div>` : ''}
+      ${showReason ? `<div class="reason">排序 ${score} · ${escapeHtml(reason)}</div>` : ''}
       <div class="raw-notice"><span>通知原文</span>${escapeHtml(t.rawNotice || t.title)}</div>
       ${t.notes ? `<div class="reason">备注：${escapeHtml(t.notes)}</div>` : ''}
       <div class="task-actions">
@@ -327,22 +328,22 @@ function render() {
   const done = tasks.filter(t => t.status === 'done');
 
   if (!tasks.length) {
-    area.innerHTML = '<div class="empty">还没有任务。粘贴一条通知，或点「加载 8 条示例通知」开始体验。</div>';
+    area.innerHTML = '<div class="empty">还没有任务。粘贴一条通知开始。</div>';
     return;
   }
 
   let html = '';
   if (view === 'plan') {
     const ranked = active.slice().sort((a, b) => workScore(b, Date.now()).score - workScore(a, Date.now()).score || (a.due ?? Infinity) - (b.due ?? Infinity));
-    html += '<div class="group-title">今日执行顺序 · 综合优先级 / 类别提前量 / 紧迫度 / 进行中状态</div>';
+    html += '<div class="group-title">执行顺序</div>';
     html += ranked.map((t, i) => taskCard(t, i + 1, true)).join('') || '<div class="empty">没有待办任务了。</div>';
     if (done.length) html += `<div class="group-title">已完成（${done.length}）</div>` + done.map((t, i) => taskCard(t, i + 1, false)).join('');
   } else if (view === 'daily') {
     const doing = active.filter(t => t.status === 'in_progress');
     const pending = active.filter(t => t.status === 'pending');
-    if (doing.length) html += `<div class="group-title">正在进行（${doing.length}）</div>` + doing.map((t, i) => taskCard(t, i + 1, false)).join('');
+    if (doing.length) html += `<div class="group-title">进行中（${doing.length}）</div>` + doing.map((t, i) => taskCard(t, i + 1, false)).join('');
     const focus = doing.concat(pending).sort((a, b) => workScore(b, Date.now()).score - workScore(a, Date.now()).score).slice(0, 5);
-    html += '<div class="group-title">今日建议先做 · Top 5</div>' + focus.map((t, i) => taskCard(t, i + 1, true)).join('');
+    html += '<div class="group-title">建议先做</div>' + focus.map((t, i) => taskCard(t, i + 1, true)).join('');
     if (done.length) html += `<div class="group-title">已完成（${done.length}）</div>` + done.map((t, i) => taskCard(t, i + 1, false)).join('');
   } else {
     const buckets = [[], [], [], [], [], []];
@@ -369,15 +370,14 @@ function addNotice(text) {
     tasks.push(t); added++;
   });
   save(); render();
-  const titles = parsed.slice(0, 3).map(t => t.title).join('、');
-  const more = parsed.length > 3 ? ` 等 ${parsed.length} 项` : '';
+  // 反馈只报数量，长标题已显示在任务卡片里
   if (!added) return { ok: false, msg: '已存在相同任务，未重复添加' };
   return {
     ok: true,
     count: added,
     msg: parsed.length > 1
-      ? `这条通知拆出 ${parsed.length} 项：新增 ${added}，跳过重复 ${skipped} · ${titles}${more}`
-      : `已添加：${titles} · 截止 ${fmt(parsed[0].due)}`
+      ? `拆出 ${parsed.length} 项 · 新增 ${added}${skipped ? ` · 重复 ${skipped}` : ''}`
+      : `已添加 · 截止 ${fmt(parsed[0].due)}`
   };
 }
 
@@ -400,7 +400,7 @@ document.getElementById('sampleBtn').addEventListener('click', () => {
   SAMPLES.forEach(s => { if (addNotice(s).ok) added++; });
   const fb = document.getElementById('parseFeedback');
   fb.className = 'feedback ok';
-  fb.textContent = `已加载 ${added} 条示例通知（重复项自动跳过）`;
+  fb.textContent = `已加载 ${added} 条示例`;
   toast(`加载了 ${added} 条`);
 });
 
@@ -437,7 +437,7 @@ document.getElementById('taskArea').addEventListener('click', e => {
   else if (act === 'priority') {
     const order = ['normal', 'high', 'low'];
     t.priority = order[(order.indexOf(t.priority) + 1) % order.length];
-    toast('优先级改为 ' + t.priority);
+    toast('优先级改为 ' + (PRIORITY_TEXT[t.priority] || t.priority));
   }
   else if (act === 'due') {
     const input = prompt('输入新的截止日（支持自然语言）：\n例如：下周三下午5点 / 12月5日 / 3天内', '');
@@ -460,6 +460,13 @@ document.getElementById('taskArea').addEventListener('click', e => {
     toast('已删除');
   }
   save(); render();
+});
+
+const startBtn = document.getElementById('startBtn');
+if (startBtn) startBtn.addEventListener('click', () => {
+  const el = document.getElementById('noticeInput');
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  el.focus();
 });
 
 load(); render();
@@ -485,7 +492,7 @@ load(); render();
     btn.disabled = !ok;
     input.disabled = !ok;
     document.querySelectorAll('[data-chat]').forEach(b => { b.disabled = !ok; });
-    if (!ok) reply.textContent = '（未连接 Python 内核；下面的任务演示仍可正常使用）';
+    if (!ok) reply.textContent = '未连接内核 · 任务演示照常可用';
   }
 
   async function probe() {
@@ -495,10 +502,10 @@ load(); render();
       const data = await res.json();
       if (!data.ok || !data.runtime) throw new Error('bad payload');
       online = true;
-      setStatus('已连接 Agent Runtime · ' + data.runtime.llm + ' · ' + data.runtime.tools.length + ' 工具', true);
-      reply.textContent = '已连接。直接输入一句话，或点下面的示例。';
+      setStatus('已连接 · ' + data.runtime.llm + ' · ' + data.runtime.tools.length + ' 工具', true);
+      reply.textContent = '已连接，输入一句话试试。';
     } catch (e) {
-      setStatus('纯浏览器模式（未启动 python server.py）', false);
+      setStatus('浏览器模式 · 未连接内核', false);
     }
   }
 
