@@ -35,9 +35,10 @@ echo       远程：%REPO_URL%
 echo [5/5] 推送（如弹出登录窗口，请选择浏览器登录并授权）
 echo.
 git push -u origin main
+set PUSH_RESULT=%errorlevel%
 
 echo.
-if %errorlevel%==0 (
+if "%PUSH_RESULT%"=="0" (
   echo ======================================================
   echo  推送成功！仓库地址：%REPO_URL:.git=%
   echo ======================================================
