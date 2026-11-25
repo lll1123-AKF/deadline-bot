@@ -17,7 +17,9 @@
 ## 第 1 步：在 GitHub 网页创建空仓库
 
 1. 打开 <https://github.com>，登录你的账号 `lll1123-AKF`。
-2. 点右上角 **「+」** → **New repository**。
+2. 找到**顶部导航栏搜索框右侧的「+」**（旁边带一个小下拉箭头）→ 点开 → 选 **New repository**。
+   - 新版 Dashboard 里，**左侧边栏的「+」** 也能进同一个菜单，两个入口完全一样。
+   - **最省事的办法**：直接在浏览器地址栏输入 <https://github.com/new> 并回车，一步到位，不用担心界面改版后找不到按钮。
 3. 填写：
    - **Repository name**：`deadline-bot`
    - **Description**（可选）：`基于 nanobot 的通知转任务 Agent 技能`
@@ -116,6 +118,7 @@ GitHub Pages（免费，和仓库绑定）：
 
 | 现象 | 原因 / 解决 |
 |---|---|
+| 找不到右上角的「+」 | 新版 Dashboard 改了布局：点左侧边栏的「+」，或直接打开 <https://github.com/new> |
 | `Repository not found` | 仓库没建、名字填错，或选了 Private 但没权限；核对 URL |
 | `failed to push / rejected` | 创建仓库时勾了 README 导致历史冲突；删掉重建空仓库，或 `git pull --rebase origin main` |
 | `Authentication failed` | 密码栏要填 token 不是账号密码；或用 GCM 浏览器登录 |
