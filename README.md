@@ -8,7 +8,8 @@
 
 ![Python](https://img.shields.io/badge/Python-3.11%2B-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
-![Tests](https://img.shields.io/badge/tests-67%20passed-brightgreen)
+[![CI](https://github.com/lll1123-AKF/deadline-bot/actions/workflows/ci.yml/badge.svg)](https://github.com/lll1123-AKF/deadline-bot/actions/workflows/ci.yml)
+![Tests](https://img.shields.io/badge/tests-73%20passed-brightgreen)
 ![Deps](https://img.shields.io/badge/dependencies-0%20(stdlib%20only)-orange)
 
 ---
@@ -20,6 +21,31 @@ python verify.py                          # 一键自检：单测 / 工具循环
 python agent_cli.py --demo --prefer-rule   # 多轮 Agent 演示 + 工具调用链 + 定时任务
 python server.py                          # 打开 http://127.0.0.1:8765/ 和内核对话
 ```
+
+### 一次真实 turn 长什么样
+
+下面是 `python agent_cli.py --demo --trace --prefer-rule` 的**真实输出节选**，不是伪代码：
+
+```text
+你 > 帮我记一下：1. 地理信息系统课程设计 12月5日前交；2. Java语言大作业 12月19日前交；3. 遥感地学分析课程论文 17周前交
+agent > 从 1 条通知中拆出 3 项任务：新增 3，重复跳过 0
+        - 地理信息系统课程设计 | 截止 2026-12-05 23:59 | id=t_46541a23
+        - Java语言大作业       | 截止 2026-12-19 23:59 | id=t_e6b22482
+        - 遥感地学分析课程论文 | 无明确截止日          | id=t_1d144cee
+        [tools: add_notices | 2 轮]
+
+=== trace（最后一轮）===
+[1] model        · rule-planner          8 条消息 / 7 个工具
+[1] tool_call    · schedule_reminder     {"cron_expr": "0 8 * * *", "message": "生成今日任务进度与截止提醒"}
+[1] tool_result  · schedule_reminder     已创建定时任务 job_cab882：0 8 * * * → 生成今日任务进度与截止提醒
+[2] model        · rule-planner          10 条消息 / 7 个工具
+[2] final        · 处理好了，结果如下：已创建定时任务 job_cab882
+```
+
+一轮就是：模型收到 8 条上下文 → 决定调 `schedule_reminder` → 注册表校验参数并执行 →
+结果以 `role=tool` 回填 → 模型再收 10 条上下文 → 生成最终回复。
+`AgentLoop` 只负责这个循环，**不知道消息来自 CLI、HTTP 还是定时任务**；
+`Trace` 把每一步记下来，面试时可以逐行解释模型为什么这么选。
 
 不需要 API key、不需要装任何第三方包。`RulePlanner` 是零密钥的确定性「模型替身」，
 它和真模型实现同一个 `chat()` 契约，所以**完整的工具调用循环离线照跑**。
@@ -181,7 +207,7 @@ python cli.py add "下个月第二个工作周结束前把材料交了" --mode l
 ## 验证
 
 ```bash
-python -m unittest discover -s tests -v   # 67 个测试，core + runtime
+python -m unittest discover -s tests -v   # 73 个测试，core + runtime
 python verify.py                           # 一键自检
 node --check docs/app.js                    # 前端脚本语法（装了 node 时）
 ```

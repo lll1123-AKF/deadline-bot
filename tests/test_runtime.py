@@ -353,5 +353,96 @@ class TestEndToEnd(RuntimeTestCase):
             self.assertEqual(Path(agent.info().data_dir), Path(tmp))
 
 
+class TestOpenAICompatLLM(unittest.TestCase):
+    """真模型适配器：用假 HTTP 响应验证契约，不需要真实 API key 或网络。"""
+
+    @staticmethod
+    def _llm():
+        from deadline_bot.runtime.llm import OpenAICompatLLM
+        return OpenAICompatLLM(
+            api_key="unit-test-key",
+            base_url="https://llm.example.test/v1",
+            model="test-model",
+        )
+
+    @staticmethod
+    def _response(message):
+        import json as _json
+        from unittest.mock import MagicMock
+        fake = MagicMock()
+        fake.__enter__.return_value.read.return_value = _json.dumps(
+            {"choices": [{"message": message}]}, ensure_ascii=False
+        ).encode("utf-8")
+        return fake
+
+    def test_tool_calls_are_parsed_and_request_contract_is_correct(self):
+        import json as _json
+        from unittest.mock import patch
+        call = {
+            "id": "call_1", "type": "function",
+            "function": {"name": "get_plan", "arguments": "{}"},
+        }
+        with patch("urllib.request.urlopen", return_value=self._response(
+                {"content": None, "tool_calls": [call]})) as mocked:
+            result = self._llm().chat(
+                [{"role": "user", "content": "今天先做什么？"}],
+                [{"name": "get_plan"}],
+            )
+        self.assertTrue(result.has_tool_calls)
+        self.assertEqual(result.tool_calls[0]["function"]["name"], "get_plan")
+        request = mocked.call_args.args[0]
+        payload = _json.loads(request.data.decode("utf-8"))
+        self.assertEqual(request.full_url, "https://llm.example.test/v1/chat/completions")
+        self.assertEqual(request.headers["Authorization"], "Bearer unit-test-key")
+        self.assertEqual(payload["model"], "test-model")
+        self.assertEqual(payload["tool_choice"], "auto")
+        self.assertEqual(payload["temperature"], 0)
+        self.assertEqual(payload["tools"], [{"name": "get_plan"}])
+
+    def test_plain_text_response(self):
+        from unittest.mock import patch
+        with patch("urllib.request.urlopen", return_value=self._response(
+                {"content": "没有待办任务"})):
+            result = self._llm().chat([], [])
+        self.assertEqual(result.content, "没有待办任务")
+        self.assertFalse(result.has_tool_calls)
+
+    def test_network_failure_becomes_recoverable_text(self):
+        import urllib.error
+        from unittest.mock import patch
+        with patch("urllib.request.urlopen", side_effect=urllib.error.URLError("offline")):
+            result = self._llm().chat([], [])
+        self.assertIn("模型调用失败", result.content)
+        self.assertEqual(result.tool_calls, [])
+
+    def test_missing_api_key_is_rejected(self):
+        import os
+        from unittest.mock import patch
+        from deadline_bot.runtime.llm import OpenAICompatLLM
+        with patch.dict(os.environ, {}, clear=True):
+            with self.assertRaises(RuntimeError):
+                OpenAICompatLLM(api_key="")
+
+    def test_build_llm_switches_on_api_key(self):
+        import os
+        from unittest.mock import patch
+        from deadline_bot.runtime.llm import OpenAICompatLLM, RulePlanner, build_llm
+        with patch.dict(os.environ, {"OPENAI_API_KEY": "k"}, clear=True):
+            self.assertIsInstance(build_llm(), OpenAICompatLLM)
+        with patch.dict(os.environ, {}, clear=True):
+            self.assertIsInstance(build_llm(), RulePlanner)
+        self.assertIsInstance(build_llm(prefer_rule=True), RulePlanner)
+
+    def test_both_planners_share_the_same_chat_contract(self):
+        import inspect
+        from deadline_bot.runtime.llm import LLM, OpenAICompatLLM, RulePlanner
+        self.assertTrue(issubclass(OpenAICompatLLM, LLM))
+        self.assertTrue(issubclass(RulePlanner, LLM))
+        self.assertEqual(
+            list(inspect.signature(OpenAICompatLLM.chat).parameters),
+            list(inspect.signature(RulePlanner.chat).parameters),
+        )
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

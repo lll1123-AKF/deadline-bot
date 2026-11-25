@@ -5,6 +5,7 @@
     python server.py                # 默认 http://127.0.0.1:8765/
     python server.py --port 9000
     python server.py --data-dir /tmp/demo --prefer-rule
+    PORT=8000 python server.py     # 云端单端口部署：自动监听 0.0.0.0
 
 打开页面后，除了浏览器本地的解析演示，还能看到「Agent Runtime 对话」面板：
     用户输入 → HTTPChannel → MessageBus → AgentLoop 多轮工具调用 → 回复 + trace
@@ -19,6 +20,7 @@ from __future__ import annotations
 import argparse
 import json
 import mimetypes
+import os
 import sys
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -154,21 +156,32 @@ class Handler(BaseHTTPRequestHandler):
 
 def main() -> None:
     global AGENT
+    env_port = os.environ.get("PORT", "")
     parser = argparse.ArgumentParser(description="DeadlineBot Agent Runtime HTTP 服务")
-    parser.add_argument("--host", default="127.0.0.1")
-    parser.add_argument("--port", type=int, default=8765)
+    parser.add_argument("--host", default=None, help="默认 127.0.0.1；设置 PORT 时为 0.0.0.0")
+    parser.add_argument("--port", type=int, default=None, help="默认 8765，PORT 环境变量优先")
     parser.add_argument("--data-dir", default=None, help="任务/会话/定时数据目录")
     parser.add_argument("--prefer-rule", action="store_true", help="强制使用离线 RulePlanner")
     args = parser.parse_args()
+
+    # 云端沙箱只暴露一个 HTTP 端口并注入 PORT；此时必须 bind 0.0.0.0 才能被反向代理访问。
+    # 本地仍默认 127.0.0.1:8765，命令行参数优先级最高。
+    host = args.host or ("0.0.0.0" if env_port else "127.0.0.1")
+    try:
+        port = args.port or (int(env_port) if env_port else 8765)
+    except ValueError:
+        parser.error(f"PORT 必须是整数，收到 {env_port!r}")
 
     AGENT = DeadlineAgent(
         data_dir=args.data_dir or str(ROOT / "data"),
         prefer_rule=args.prefer_rule,
     )
     info = AGENT.info()
-    server = ThreadingHTTPServer((args.host, args.port), Handler)
-    url = f"http://{args.host}:{args.port}/"
+    server = ThreadingHTTPServer((host, port), Handler)
+    display_host = "127.0.0.1" if host in ("0.0.0.0", "") else host
+    url = f"http://{display_host}:{port}/"
     print("DeadlineBot Agent Runtime")
+    print(f"  监听      {host}:{port}")
     print(f"  页面      {url}")
     print(f"  健康检查 {url}api/health")
     print(f"  对话 API  POST {url}api/chat  {{\"text\": \"今天先做什么\"}}")
@@ -176,6 +189,7 @@ def main() -> None:
     print(f"  工具      {', '.join(info.tools)}")
     print(f"  数据目录  {info.data_dir}")
     print("Ctrl+C 停止\n")
+    sys.stdout.flush()  # 云端沙箱靠 stdout 判断服务是否就绪，不能让启动日志留在缓冲区
     try:
         server.serve_forever()
     except KeyboardInterrupt:

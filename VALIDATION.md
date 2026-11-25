@@ -16,7 +16,7 @@ python verify.py
 | 类别 | 检查项 |
 | --- | --- |
 | 语法 | `compileall` 全项目、CLI 各子命令 `--help`、两个新入口 `--help`、前端 `node --check` |
-| 测试 | `python -m unittest discover -s tests`，**67 个测试**（core 29 + runtime 38 左右） |
+| 测试 | `python -m unittest discover -s tests`，**73 个测试**（core 与 runtime 两组） |
 | core 场景 | 解析入库、重复去重、自然语言改期、动态改字段、排序含理由、完成状态一致性、示例通知完整 |
 | Runtime | 组装（rule-planner / 7 工具）、多事项通知入库、工具调用链可回放、内容排序工具、定时主动触发、HTTP 渠道适配、会话历史压缩 |
 | 交付 | `README.md` / `ARCHITECTURE.md` / `RESUME_GUIDE.md` / `VALIDATION.md` 齐备 |
@@ -34,7 +34,7 @@ node --check docs/app.js                     # 前端语法（装了 node）
 
 ## 二、实测过的证据
 
-**1. 单元测试**：`Ran 67 tests ... OK`。两组测试分别覆盖 core（日期、拆分、标题清洗、报告、排序、状态机）与
+**1. 单元测试**：`Ran 73 tests ... OK`。两组测试分别覆盖 core（日期、拆分、标题清洗、报告、排序、状态机）与
 runtime（消息总线、session_key、工具校验与错误回喂、多轮循环、迭代上限、Trace、定时任务、会话压缩、三种渠道、端到端流水线）。
 
 **2. 一键自检**：语法 / CLI / core / runtime / 前端 / 文档全部 PASS。
