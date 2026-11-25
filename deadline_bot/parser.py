@@ -6,6 +6,9 @@
 
 面试时最值得讲的就是这个文件：日期抽取是 agent 从「文本」走向「可执行任务」
 的第一步，规则版解决 80% 常见表达，LLM 版兜住长尾。
+
+另外支持「一条通知里含多个事项」的拆分（编号清单 / 多行清单），
+这是真实场景里最常见的输入形式，例如教务处一次发 4 个作业截止日。
 """
 
 from __future__ import annotations
@@ -152,18 +155,80 @@ def parse_due(text: str, now: Optional[datetime] = None) -> tuple[Optional[datet
 
 
 # --------------------------------------------------------------------------
+# 多任务拆分
+# --------------------------------------------------------------------------
+
+# 「1.」「1、」「1)」「（1）」「一、」等编号标记。标记前的换行/分号属于分隔符，
+# 会被消耗掉，因此切片时上一段自然截止在分隔符之前。
+_ITEM_MARKER = re.compile(
+    r"(?:^|[\n;；，,、:：])\s*(?:"
+    r"\d{1,2}\s*[.、．)）:：](?!\d)"   # (?!\d) 避免把「12:30」当成编号
+    r"|[一二三四五六七八九十]{1,3}\s*[、.．]"
+    r"|[（(]\s*\d{1,2}\s*[)）]"
+    r")\s*"
+)
+
+_ACTION_HINT = re.compile(r"(交|提交|完成|参加|报销|填写|截止|前|月|日|周)")
+
+
+def split_notices(text: str) -> list[str]:
+    """把一条含多个事项的通知拆成独立条目。
+
+    支持「1. xxx; 2. xxx」「一、xxx 二、xxx」以及无编号的多行清单。
+    编号可以跟在行首、分号、逗号、顿号或冒号后——真实通知经常写成
+    「帮我记一下：1. xxx；2. xxx」这种单行形式，首个条目前有引导语。
+    引导语本身不是任务，会被丢弃；只有识别到 >= 2 个条目才拆，
+    否则原样返回。这是「不确定就别乱拆」原则：宁可少拆，也不要切碎。
+    """
+    if not text:
+        return []
+    cleaned = text.strip()
+
+    markers = list(_ITEM_MARKER.finditer(cleaned))
+    if len(markers) >= 2:
+        items: list[str] = []
+        for i, m in enumerate(markers):
+            end = markers[i + 1].start() if i + 1 < len(markers) else len(cleaned)
+            chunk = cleaned[m.end():end].strip(" \n\t;；，,")
+            if chunk:
+                items.append(chunk)
+        if items:
+            return items
+
+    lines = [ln.strip(" \t;；，,") for ln in cleaned.splitlines() if ln.strip()]
+    if len(lines) >= 2 and sum(1 for ln in lines if _ACTION_HINT.search(ln)) >= 2:
+        if len(lines[0]) <= 8 and lines[0].rstrip("：:") in ("注意", "通知", "提醒", "各位同学", "各位同事"):
+            lines = lines[1:]
+        return lines or [cleaned]
+
+    return [cleaned]
+
+
+# --------------------------------------------------------------------------
 # 标题 / 来源 / 类别
 # --------------------------------------------------------------------------
 
+_WEEK_TAG = re.compile(r"第?\s*\d{1,2}\s*周(?:次)?")          # 教学周次，不是「N周内」
+_EMPTY_PAREN = re.compile(r"[（(]\s*[)）]")                     # 日期被摘走后留下的空括号
+_TAIL_BEFORE = re.compile(r"(?:截止)?\s*前\s*(?:交|提交|完成|上交|报送|上传|寄出)?\s*[;；，,。]?\s*$")
+_TAIL_VERB = re.compile(r"(?:交|提交|完成)\s*[;；，,。]?\s*$")
+
+
 def _clean_title(text: str, date_raw: str) -> str:
     cleaned = text.replace(date_raw, " ") if date_raw else text
-    # 去掉 "教务处通知：" / "HR通知：" 这类来源前缀
+    # 编号前缀 / 来源前缀 / 称呼
+    cleaned = re.sub(r"^\s*\d{1,2}\s*[.、．)）]\s*", "", cleaned)
     cleaned = re.sub(r"^[\u4e00-\u9fa5A-Za-z]{2,10}(通知|提醒|公告)\s*[:：]\s*", "", cleaned)
-    cleaned = re.sub(r"^(各位同学|同学们|大家好|各位同事|【[^】]*】)", " ", cleaned)
-    # 去掉日期残留的「前 / 之前 / 截止前」和时间片段
-    cleaned = re.sub(r"^\s*(前|之前|截止前)\s*", " ", cleaned)
+    cleaned = re.sub(r"^(各位同学|同学们|大家好|各位同事|【[^】]*】|注意)\s*[:：]?\s*", " ", cleaned)
+    # 时间附件：具体钟点
     cleaned = re.sub(r"(上午|下午|晚上|中午)?\s*\d{1,2}\s*[:点时]\s*\d{0,2}\s*分?(前|之前)?", " ", cleaned)
-    cleaned = re.sub(r"\s+", " ", cleaned).strip(" ，。；;：:、\n\t")
+    # 教学周次、空括号、尾部「前交」「前提交」
+    cleaned = _WEEK_TAG.sub(" ", cleaned)
+    cleaned = _EMPTY_PAREN.sub(" ", cleaned)
+    cleaned = _TAIL_BEFORE.sub(" ", cleaned)
+    cleaned = _TAIL_VERB.sub(" ", cleaned)
+    cleaned = re.sub(r"^\s*(交|提交|完成|上交)\s*", "", cleaned)
+    cleaned = re.sub(r"\s+", " ", cleaned).strip(" ，。；;：:、\n\t（）()")
     if not cleaned:
         return "待处理通知"
     return cleaned[:80]
@@ -194,23 +259,36 @@ def _detect_priority(text: str) -> str:
     return "normal"
 
 
-def parse_notice(text: str, now: Optional[datetime] = None, mode: str = "rule") -> Task:
-    """把一条通知解析成 Task。mode='llm' 时改用大模型抽取。"""
+def parse_notices(text: str, now: Optional[datetime] = None, mode: str = "rule") -> list[Task]:
+    """把一段通知解析成一条或多条 Task；编号清单会自动拆成多条。
+
+    每条任务都保留 raw_notice（自己那一段原文），便于在详情页回溯复核。
+    """
     if not text or not text.strip():
         raise ValueError("通知内容不能为空")
-    if mode == "llm":
-        return _parse_with_llm(text)
-    due, date_raw = parse_due(text, now)
-    return Task(
-        id=new_id(),
-        title=_clean_title(text, date_raw),
-        due_at=due,
-        source=_detect_source(text),
-        category=_detect_category(text),
-        raw_notice=text.strip(),
-        priority=_detect_priority(text),
-        tags=["auto-parsed", mode],
-    )
+    now = now or datetime.now()
+    tasks: list[Task] = []
+    for chunk in split_notices(text):
+        if mode == "llm":
+            tasks.append(_parse_with_llm(chunk))
+            continue
+        due, date_raw = parse_due(chunk, now)
+        tasks.append(Task(
+            id=new_id(),
+            title=_clean_title(chunk, date_raw),
+            due_at=due,
+            source=_detect_source(chunk),
+            category=_detect_category(chunk),
+            raw_notice=chunk.strip(),
+            priority=_detect_priority(chunk),
+            tags=["auto-parsed", mode],
+        ))
+    return tasks
+
+
+def parse_notice(text: str, now: Optional[datetime] = None, mode: str = "rule") -> Task:
+    """向后兼容的入口：只返回第一条。需要处理多事项时请用 parse_notices。"""
+    return parse_notices(text, now, mode)[0]
 
 
 # --------------------------------------------------------------------------

@@ -20,7 +20,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from deadline_bot import (
-    TaskStore, build_report, build_plan, build_daily, parse_notice, parse_due,
+    TaskStore, build_report, build_plan, build_daily, parse_notices, parse_due,
 )
 from deadline_bot.models import now_local
 
@@ -28,15 +28,22 @@ DEFAULT_DB = Path(__file__).resolve().parent / "data" / "tasks.json"
 
 
 def cmd_add(args: argparse.Namespace, store: TaskStore) -> None:
-    task = parse_notice(args.text, now=now_local(), mode=args.mode)
-    added, info = store.add(task)
-    if added:
-        print(f"[ok] 已创建任务 {info}")
-        print(f"     标题：{task.title}")
-        print(f"     截止：{task.due_text()}")
-        print(f"     来源：{task.source}　类别：{task.category}　优先级：{task.priority}")
-    else:
-        print(f"[skip] {info}")
+    """一条通知可能含多个事项，parse_notices 会自动拆开。"""
+    tasks = parse_notices(args.text, now=now_local(), mode=args.mode)
+    added = skipped = 0
+    for task in tasks:
+        ok, info = store.add(task)
+        if ok:
+            added += 1
+            print(f"[ok] 已创建任务 {info}")
+            print(f"     标题：{task.title}")
+            print(f"     截止：{task.due_text()}")
+            print(f"     来源：{task.source}　类别：{task.category}　优先级：{task.priority}")
+        else:
+            skipped += 1
+            print(f"[skip] {info}")
+    if len(tasks) > 1:
+        print(f"[ok] 这条通知共拆出 {len(tasks)} 项：新增 {added}，跳过重复 {skipped}")
 
 
 def cmd_list(args: argparse.Namespace, store: TaskStore) -> None:
@@ -74,10 +81,10 @@ def cmd_import(args: argparse.Namespace, store: TaskStore) -> None:
         line = line.strip()
         if not line or line.startswith("#"):
             continue
-        task = parse_notice(line, now=now_local(), mode=args.mode)
-        ok, _ = store.add(task)
-        added += int(ok)
-        skipped += int(not ok)
+        for task in parse_notices(line, now=now_local(), mode=args.mode):
+            ok, _ = store.add(task)
+            added += int(ok)
+            skipped += int(not ok)
     print(f"[ok] 导入完成：新增 {added} 条，跳过重复 {skipped} 条")
 
 

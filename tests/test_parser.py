@@ -167,5 +167,77 @@ class DynamicUpdateTests(unittest.TestCase):
         self.assertIn("每日进度", report)
 
 
+class TestMultiNotice(unittest.TestCase):
+    """一条通知里含多个事项：必须拆开，每条独立解析日期和原文。"""
+
+    NOTICE = (
+        "注意：\n"
+        "1.《地理信息系统设计与应用》课程设计14周（12月5日）前交;\n"
+        "2.《地理信息系统设计与应用》实验报告14周（12月13日）前交;\n"
+        "3.Java语言大作业16周前（12月19日）交;\n"
+        "4.遥感地学分析课程论文17周前交;"
+    )
+
+    def test_split_into_four(self):
+        from deadline_bot.parser import split_notices
+        self.assertEqual(len(split_notices(self.NOTICE)), 4)
+
+    def test_each_has_own_due(self):
+        from deadline_bot.parser import parse_notices
+        tasks = parse_notices(self.NOTICE, now=NOW)
+        self.assertEqual(len(tasks), 4)
+        self.assertEqual([t.due_text() for t in tasks], [
+            "2026-12-05 23:59", "2026-12-13 23:59",
+            "2026-12-19 23:59", "无明确截止日",
+        ])
+
+    def test_clean_titles(self):
+        from deadline_bot.parser import parse_notices
+        titles = [t.title for t in parse_notices(self.NOTICE, now=NOW)]
+        self.assertEqual(titles[0], "《地理信息系统设计与应用》课程设计")
+        self.assertEqual(titles[2], "Java语言大作业")
+        self.assertNotIn("14周", titles[0])
+        self.assertNotIn("前交", titles[0])
+
+    def test_raw_notice_is_per_item(self):
+        from deadline_bot.parser import parse_notices
+        tasks = parse_notices(self.NOTICE, now=NOW)
+        self.assertIn("12月13日", tasks[1].raw_notice)
+        self.assertNotIn("12月5日", tasks[1].raw_notice)
+
+    def test_single_notice_not_split(self):
+        from deadline_bot.parser import split_notices
+        text = "班主任通知：本周五下午5点前交社会实践报告"
+        self.assertEqual(split_notices(text), [text])
+
+    def test_chinese_numbering(self):
+        from deadline_bot.parser import split_notices
+        text = "一、12月5日前交课程设计；二、12月13日前交实验报告"
+        self.assertEqual(len(split_notices(text)), 2)
+
+    def test_parse_notice_backward_compatible(self):
+        task = parse_notice("班主任通知：本周五下午5点前交社会实践报告", now=NOW)
+        self.assertEqual(task.due_text(), "2026-11-27 17:00")
+
+    def test_inline_single_line_list_with_leading_phrase(self):
+        """回归：「帮我记一下：1. …；2. …；3. …」首条不能被引导语吞掉。"""
+        from deadline_bot.parser import split_notices, parse_notices
+        text = ("帮我记一下：1. 地理信息系统课程设计 12月5日前交；"
+                "2. Java语言大作业 12月19日前交；3. 遥感地学分析课程论文 17周前交")
+        items = split_notices(text)
+        self.assertEqual(len(items), 3)
+        self.assertIn("课程设计", items[0])
+        tasks = parse_notices(text, now=NOW)
+        self.assertEqual([t.due_text() for t in tasks], [
+            "2026-12-05 23:59", "2026-12-19 23:59", "无明确截止日",
+        ])
+
+    def test_clock_time_is_not_a_numbering_marker(self):
+        """回归：编号后的数字前瞻断言，防止「12:30」被当成清单第二项。"""
+        from deadline_bot.parser import split_notices
+        text = "会议 12:30 开始，请准时参加，带上材料"
+        self.assertEqual(split_notices(text), [text])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

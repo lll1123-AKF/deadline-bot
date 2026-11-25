@@ -93,7 +93,30 @@ textarea:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px var(--
   padding:3px 9px;font-size:11.5px;cursor:pointer;font-family:inherit;white-space:nowrap}
 .mini:hover{border-color:var(--blue);color:var(--blue)}
 .mini.danger:hover{border-color:var(--red);color:var(--red)}
-.mini-row{display:flex;gap:5px}
+.mini-row{display:flex;gap:5px;flex-wrap:wrap}
+
+/* 任务卡片：默认只显示名称 + 时间，其余收进详情 */
+.task-main{flex:1;min-width:0}
+.task-headline{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.task-headline .task-title{flex:1;min-width:0}
+.task-due{font-size:12px;color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
+.task-due.overdue{color:var(--red)}
+.task-due.soon{color:var(--amber)}
+.detail-toggle{border:1px solid var(--line);background:#fff;color:var(--blue);border-radius:6px;
+  padding:3px 11px;font-size:11.5px;cursor:pointer;font-family:inherit;white-space:nowrap}
+.detail-toggle:hover{background:var(--blue-soft);border-color:var(--blue)}
+.task-sub{font-size:11.5px;color:var(--muted);margin-top:5px}
+.badge-done,.badge-doing{border-radius:5px;padding:1px 6px;font-size:11px}
+.badge-done{background:var(--teal-soft);color:var(--teal)}
+.badge-doing{background:var(--blue-soft);color:var(--blue)}
+.task-detail{margin-top:12px;padding-top:12px;border-top:1px dashed var(--line-strong)}
+.detail-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(128px,1fr));gap:8px;font-size:12px}
+.detail-grid > div{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:6px 9px}
+.detail-grid span{color:var(--muted);margin-right:8px;font-size:11px}
+.raw-notice{margin-top:10px;background:var(--bg);border:1px solid var(--line);border-radius:6px;
+  padding:8px 10px;font-size:11.5px;color:var(--muted);line-height:1.6;word-break:break-word}
+.raw-notice span{display:block;color:var(--blue);font-size:11px;margin-bottom:3px}
+.task-detail .task-actions{align-items:flex-start;margin-top:11px}
 
 .empty{text-align:center;color:var(--muted);padding:44px 20px;font-size:13px;
   background:var(--surface);border:1px dashed var(--line-strong);border-radius:12px}
@@ -114,9 +137,35 @@ footer{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;
   opacity:0;transition:.25s;pointer-events:none;z-index:20}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
+/* ---------- Agent Runtime 对话面板 ---------- */
+.runtime-card{border-color:var(--line-strong)}
+.runtime-status{border-radius:20px;padding:3px 10px;font-size:11px;border:1px solid}
+.runtime-status.online{background:var(--teal-soft);color:var(--teal);border-color:#b9e3d3}
+.runtime-status.offline{background:var(--amber-soft);color:var(--amber);border-color:#eddcb9}
+.runtime-hint{margin:0 0 12px;font-size:12.5px;color:var(--muted);line-height:1.7}
+.runtime-hint code,.notice-strip code,.about-note code{background:var(--bg);border:1px solid var(--line);
+  border-radius:4px;padding:1px 5px;font-size:11.5px;color:var(--blue)}
+.runtime-row{display:flex;gap:9px}
+.runtime-row input{flex:1;min-width:0;padding:9px 12px;border:1px solid var(--line-strong);
+  border-radius:8px;font-size:13px;font-family:inherit;color:var(--text);background:var(--surface)}
+.runtime-row input:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-soft)}
+.runtime-row input:disabled{background:var(--bg);color:var(--muted)}
+.runtime-quick{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.runtime-quick .btn{font-size:11.5px;padding:5px 10px}
+.chat-reply{margin:14px 0 0;background:var(--bg);border:1px solid var(--line);border-radius:9px;
+  padding:12px 14px;font-size:12.5px;line-height:1.7;white-space:pre-wrap;word-break:break-word;
+  max-height:320px;overflow:auto;color:var(--text);font-family:inherit}
+.runtime-card .btn:disabled{opacity:.5;cursor:not-allowed}
+.trace-box{margin-top:10px;font-size:11.5px;color:var(--muted)}
+.trace-box summary{cursor:pointer;color:var(--blue)}
+.trace-box pre{background:var(--bg);border:1px solid var(--line);border-radius:8px;
+  padding:11px 13px;margin-top:9px;font-size:11px;line-height:1.75;white-space:pre-wrap;
+  word-break:break-word;max-height:260px;overflow:auto}
+
 @media (max-width:700px){
   .input-row{flex-direction:column}
   .input-row .btn{width:100%}
+  .runtime-row{flex-direction:column}
   .task{flex-direction:column;gap:9px}
   .task-actions{flex-direction:row;flex-wrap:wrap;align-items:center}
   .mini-row{flex-wrap:wrap}

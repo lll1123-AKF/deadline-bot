@@ -25,7 +25,9 @@
 
 <main class="wrap">
   <div class="notice-strip">
-    这是浏览器里的交互演示，数据只存在你的浏览器中。完整的 Python 实现、单元测试与设计说明见
+    在线页面默认走浏览器本地演示，数据只存在你的浏览器中，不会上传。
+    在仓库里运行 <code>python server.py</code> 后用同一网址打开，下面的「Agent Runtime 对话」会自动连上真实的 Python 内核。
+    完整源码、单测与架构说明见
     <a id="repoLink2" href="https://github.com/lll1123-AKF/deadline-bot" target="_blank" rel="noopener">GitHub 仓库</a>。
   </div>
 
@@ -47,6 +49,33 @@
     </div>
   </section>
 
+  <section class="card runtime-card" id="runtimeCard">
+    <div class="card-head">
+      <h2>Agent Runtime 对话</h2>
+      <span id="runtimeStatus" class="runtime-status offline">检测内核中…</span>
+    </div>
+    <p class="runtime-hint">
+      这一栏不走浏览器里的复刻逻辑，而是把消息发给 Python 内核：
+      消息总线 → 上下文构建 → 多轮 tool-calling 循环 → 工具注册表 → 回复，
+      并把每一轮的工具调用链回显出来。运行 <code>python server.py</code> 后自动启用。
+    </p>
+    <div class="runtime-row">
+      <input id="chatInput" type="text" placeholder="例如：今天先做什么？">
+      <button id="chatBtn" class="btn primary">发给 Agent</button>
+    </div>
+    <div class="runtime-quick">
+      <button class="btn ghost" data-chat="帮我记一下：1.课程设计 12月5日前交；2.Java大作业 12月19日前交">试：多条通知</button>
+      <button class="btn ghost" data-chat="今天先做什么？">试：执行顺序</button>
+      <button class="btn ghost" data-chat="进度怎么样？">试：每日进度</button>
+      <button class="btn ghost" data-chat="每天早上 8 点提醒我生成今日任务进度">试：定时提醒</button>
+    </div>
+    <pre id="chatReply" class="chat-reply">（尚未连接 Agent Runtime）</pre>
+    <details id="traceBox" class="trace-box" hidden>
+      <summary>查看本轮工具调用链（Trace）</summary>
+      <pre id="chatTrace"></pre>
+    </details>
+  </section>
+
   <div class="tabs" role="tablist">
     <button class="tab active" data-view="plan">执行顺序 <span class="tab-sub">按内容排序</span></button>
     <button class="tab" data-view="daily">每日进度 <span class="tab-sub">完成率</span></button>
@@ -64,11 +93,11 @@
       <div class="feature"><h3>进度跟踪</h3><p>完成率、进度条、状态分布、今日聚焦，随时开始 / 改进度 / 标记完成。</p></div>
       <div class="feature"><h3>随时可改</h3><p>改优先级、改截止日（支持自然语言）、加备注、删除，排序实时重算。</p></div>
     </div>
-    <p class="about-note">真实项目是 <strong>基于 nanobot 工作区 Skill 机制</strong>的 Python 二次开发：nanobot 负责对话、记忆与定时触发，本项目提供领域能力。本页用 JavaScript 复刻了同一套逻辑，便于在线体验。</p>
+    <p class="about-note">Python 端是一个<strong>独立实现的精简 Agent Runtime</strong>：消息总线、工具注册表与参数校验、上下文构建、多轮 tool-calling 循环、会话记忆压缩、定时调度与三种渠道适配器。本页用 JavaScript 复刻了领域逻辑，方便没有后端时在线体验；启动 <code>python server.py</code> 后可直接观察真实内核的工具调用链。<strong>nanobot 只是可选的接入渠道之一，不是项目主体。</strong></p>
   </section>
 
   <footer>
-    <span>DeadlineBot · 教学演示项目 · 非 nanobot 官方项目</span>
+    <span>DeadlineBot · 独立 Agent Runtime 教学项目 · 非 nanobot 官方项目</span>
     <span>本地演示，无需登录，数据不上传</span>
   </footer>
 </main>

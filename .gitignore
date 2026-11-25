@@ -3,5 +3,8 @@ __pycache__/
 *.egg-info/
 .venv/
 venv/
+# 运行时生成的数据（示例通知 sample_notices.txt 仍纳入版本库）
 data/tasks.json
+data/sessions.json
+data/cron.json
 .DS_Store

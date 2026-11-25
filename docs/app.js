@@ -1,9 +1,9 @@
 /* DeadlineBot 交互演示
- * 用 JavaScript 复刻 Python 版的核心逻辑（日期解析 / 内容排序 / 进度），
+ * 用 JavaScript 复刻 Python 版的核心逻辑（多任务拆分 / 日期解析 / 内容排序 / 进度），
  * 便于在浏览器里直接体验。完整实现见仓库 deadline_bot/ 目录。
  */
 
-const STORAGE_KEY = 'deadlinebot.tasks.v1';
+const STORAGE_KEY = 'deadlinebot.tasks.v2';
 const WEEKDAYS = { '一': 0, '二': 1, '三': 2, '四': 3, '五': 4, '六': 5, '日': 6, '天': 6 };
 const CATEGORY_LEAD = { '考试': 3, '作业': 1.5, '资料提交': 1, '审批': 1, '汇报': .5, '会议': 0, '其他': .5 };
 const PRIORITY_W = { high: 3, normal: 1.5, low: 0 };
@@ -27,6 +27,36 @@ const CATEGORY_KW = [
   ['审批', ['审批', '报销', '申请', '盖章', '签字']],
   ['汇报', ['周报', '日报', '月报', '报表', '汇报', '总结']]
 ];
+
+/* ---------- 多任务拆分 ---------- */
+
+function splitNotices(text) {
+  const cleaned = (text || '').trim();
+  if (!cleaned) return [];
+  // 与 Python 端 _ITEM_MARKER 保持一致：编号可跟在行首 / 分号 / 逗号 / 顿号 / 冒号后。
+  // (?!\d) 防止把「12:30」误认成编号。
+  const re = /(?:^|[\n;；，,、:：])\s*(?:\d{1,2}\s*[.、．)）:：](?!\d)|[一二三四五六七八九十]{1,3}\s*[、.．]|[（(]\s*\d{1,2}\s*[)）])\s*/g;
+  const markers = [];
+  let m;
+  while ((m = re.exec(cleaned))) markers.push({ start: m.index, end: m.index + m[0].length });
+  if (markers.length >= 2) {
+    const items = [];
+    for (let i = 0; i < markers.length; i++) {
+      const end = i + 1 < markers.length ? markers[i + 1].start : cleaned.length;
+      const chunk = cleaned.slice(markers[i].end, end).replace(/^[ \n\t;；，,]+|[ \n\t;；，,]+$/g, '');
+      if (chunk) items.push(chunk);
+    }
+    if (items.length) return items;
+  }
+  const lines = cleaned.split('\n')
+    .map(s => s.replace(/^[ \t;；，,]+|[ \t;；，,]+$/g, '')).filter(Boolean);
+  const hint = /交|提交|完成|参加|报销|填写|截止|前|月|日|周/;
+  if (lines.length >= 2 && lines.filter(s => hint.test(s)).length >= 2) {
+    if (lines[0].length <= 8 && /^(注意|通知|提醒|各位同学|各位同事)[：:]?$/.test(lines[0])) lines.shift();
+    return lines.length ? lines : [cleaned];
+  }
+  return [cleaned];
+}
 
 /* ---------- 日期解析 ---------- */
 
@@ -99,11 +129,16 @@ function parseDue(text, now) {
 
 function cleanTitle(text, raw) {
   let s = raw ? text.replace(raw, ' ') : text;
+  s = s.replace(/^\s*\d{1,2}\s*[.、．)）]\s*/, '');
   s = s.replace(/^[\u4e00-\u9fa5A-Za-z]{2,10}(通知|提醒|公告)\s*[:：]\s*/, '');
-  s = s.replace(/^(各位同学|同学们|大家好|各位同事|【[^】]*】)/, ' ');
-  s = s.replace(/^\s*(前|之前|截止前)\s*/, ' ');
+  s = s.replace(/^(各位同学|同学们|大家好|各位同事|【[^】]*】|注意)\s*[:：]?\s*/, ' ');
   s = s.replace(/(上午|下午|晚上|中午)?\s*\d{1,2}\s*[:点时]\s*\d{0,2}\s*分?(前|之前)?/g, ' ');
-  s = s.replace(/\s+/g, ' ').replace(/^[ ，。；;：:、]+|[ ，。；;：:、]+$/g, '');
+  s = s.replace(/第?\s*\d{1,2}\s*周(?:次)?/g, ' ');
+  s = s.replace(/[（(]\s*[)）]/g, ' ');
+  s = s.replace(/(?:截止)?\s*前\s*(?:交|提交|完成|上交|报送|上传|寄出)?\s*[;；，,。]?\s*$/, ' ');
+  s = s.replace(/(?:交|提交|完成)\s*[;；，,。]?\s*$/, ' ');
+  s = s.replace(/^\s*(交|提交|完成|上交)\s*/, '');
+  s = s.replace(/\s+/g, ' ').replace(/^[ ，。；;：:、（）()]+|[ ，。；;：:、（）()]+$/g, '');
   return s.slice(0, 80) || '待处理通知';
 }
 
@@ -135,8 +170,13 @@ function parseNotice(text) {
     progress: 0,
     notes: '',
     raw,
+    rawNotice: text.trim(),
     created: Date.now()
   };
+}
+
+function parseNotices(text) {
+  return splitNotices(text).map(parseNotice);
 }
 
 /* ---------- 排序打分 ---------- */
@@ -167,6 +207,7 @@ function workScore(t, now) {
 
 let tasks = [];
 let view = 'plan';
+let expanded = new Set();
 
 function load() {
   try { tasks = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); }
@@ -174,12 +215,12 @@ function load() {
 }
 function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks)); }
 function fmt(ts) {
-  if (ts === null) return '无明确截止日';
+  if (ts === null || ts === undefined) return '无截止日';
   const d = new Date(ts);
   const p = n => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
 }
-function daysLeft(t) { return t.due === null ? null : (t.due - Date.now()) / 86400000; }
+function daysLeft(t) { return t.due === null || t.due === undefined ? null : (t.due - Date.now()) / 86400000; }
 function urgency(t) {
   const r = daysLeft(t);
   if (r === null) return 5;
@@ -193,12 +234,16 @@ const LEVELS = [
   ['已逾期', 'overdue'], ['24 小时内', 'soon'], ['3 天内', 'soon'],
   ['7 天内', ''], ['7 天以上', ''], ['无截止日', '']
 ];
+const STATUS_TEXT = { pending: '待开始', in_progress: '进行中', done: '已完成', cancelled: '已取消' };
 
 function toast(msg) {
   const el = document.getElementById('toast');
   el.textContent = msg; el.classList.add('show');
   clearTimeout(toast.timer);
   toast.timer = setTimeout(() => el.classList.remove('show'), 1800);
+}
+function escapeHtml(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
 /* ---------- 渲染 ---------- */
@@ -222,52 +267,57 @@ function renderSummary() {
 function taskCard(t, index, showReason) {
   const r = daysLeft(t);
   const { score, reason } = workScore(t, Date.now());
-  const chips = [];
-  chips.push(`<span class="chip">${t.category}</span>`);
-  chips.push(`<span class="chip">${t.source}</span>`);
-  if (t.priority === 'high') chips.push('<span class="chip high">加急</span>');
-  if (t.status === 'in_progress') chips.push('<span class="chip doing">进行中</span>');
-  if (t.status !== 'done' && r !== null && r < 0) chips.push('<span class="chip overdue">已逾期</span>');
-  else if (t.status !== 'done' && r !== null && r <= 1) chips.push('<span class="chip soon">今天到期</span>');
-  let detail;
-  if (r === null) detail = '无明确截止日';
-  else if (r < 0) detail = `已逾期 ${Math.abs(r).toFixed(1)} 天`;
-  else if (r < 1) detail = `还剩 ${(r * 24).toFixed(1)} 小时`;
-  else detail = `还剩 ${r.toFixed(1)} 天`;
-  chips.push(`<span class="chip">${fmt(t.due)}</span>`);
-  chips.push(`<span class="chip">${detail}</span>`);
+  const open = expanded.has(t.id);
 
-  const bar = `<div class="progress-line"><div class="bar"><i style="width:${t.progress}%"></i></div><span class="pct">${t.progress}%</span></div>`;
-  const actions = `
-    <div class="task-actions">
-      <div class="mini-row">
-        <button class="mini" data-act="start" data-id="${t.id}">开始</button>
-        <button class="mini" data-act="progress" data-id="${t.id}">+20%</button>
-        <button class="mini" data-act="finish" data-id="${t.id}">完成</button>
+  let dueClass = '', remainText;
+  if (r === null) remainText = '无截止日';
+  else if (r < 0) { dueClass = 'overdue'; remainText = `已逾期 ${Math.abs(r).toFixed(1)} 天`; }
+  else if (r < 1) { dueClass = 'soon'; remainText = `还剩 ${(r * 24).toFixed(1)} 小时`; }
+  else remainText = `还剩 ${r.toFixed(1)} 天`;
+
+  const badge = t.status === 'done' ? '<span class="badge-done">已完成</span>'
+    : t.status === 'in_progress' ? '<span class="badge-doing">进行中</span>' : '';
+  const progressText = t.progress ? ` · 进度 ${t.progress}%` : '';
+
+  const detail = open ? `
+    <div class="task-detail">
+      <div class="detail-grid">
+        <div><span>来源</span>${escapeHtml(t.source)}</div>
+        <div><span>类别</span>${escapeHtml(t.category)}</div>
+        <div><span>优先级</span>${escapeHtml(t.priority)}</div>
+        <div><span>状态</span>${escapeHtml(STATUS_TEXT[t.status] || t.status)}</div>
       </div>
-      <div class="mini-row">
-        <button class="mini" data-act="priority" data-id="${t.id}">改优先级</button>
-        <button class="mini" data-act="due" data-id="${t.id}">改截止日</button>
-        <button class="mini" data-act="note" data-id="${t.id}">备注</button>
-        <button class="mini danger" data-act="delete" data-id="${t.id}">删除</button>
+      <div class="progress-line"><div class="bar"><i style="width:${t.progress}%"></i></div><span class="pct">${t.progress}%</span></div>
+      ${showReason ? `<div class="reason">排序分数 ${score} · 理由：${escapeHtml(reason)}</div>` : ''}
+      <div class="raw-notice"><span>通知原文</span>${escapeHtml(t.rawNotice || t.title)}</div>
+      ${t.notes ? `<div class="reason">备注：${escapeHtml(t.notes)}</div>` : ''}
+      <div class="task-actions">
+        <div class="mini-row">
+          <button class="mini" data-act="start" data-id="${t.id}">开始</button>
+          <button class="mini" data-act="progress" data-id="${t.id}">+20%</button>
+          <button class="mini" data-act="finish" data-id="${t.id}">完成</button>
+        </div>
+        <div class="mini-row">
+          <button class="mini" data-act="priority" data-id="${t.id}">改优先级</button>
+          <button class="mini" data-act="due" data-id="${t.id}">改截止日</button>
+          <button class="mini" data-act="note" data-id="${t.id}">备注</button>
+          <button class="mini danger" data-act="delete" data-id="${t.id}">删除</button>
+        </div>
       </div>
-    </div>`;
-  const noteHtml = t.notes ? `<div class="reason">备注：${escapeHtml(t.notes.split('\n').pop())}</div>` : '';
+    </div>` : '';
+
   return `<div class="task ${t.status === 'done' ? 'done' : ''}">
     <div class="rank">${index}</div>
-    <div class="task-body">
-      <div class="task-title">${escapeHtml(t.title)}</div>
-      <div class="task-meta">${chips.join('')}</div>
-      ${bar}
-      ${showReason ? `<div class="reason">排序分数 ${score} · 理由：${reason}</div>` : ''}
-      ${noteHtml}
+    <div class="task-main">
+      <div class="task-headline">
+        <div class="task-title">${escapeHtml(t.title)}</div>
+        <div class="task-due ${dueClass}">${fmt(t.due)}</div>
+        <button class="detail-toggle" data-act="toggle" data-id="${t.id}">${open ? '收起' : '详情'}</button>
+      </div>
+      <div class="task-sub">${remainText}${badge ? ' · ' + badge : ''}${progressText}</div>
+      ${detail}
     </div>
-    ${actions}
   </div>`;
-}
-
-function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
 function render() {
@@ -310,11 +360,25 @@ function render() {
 /* ---------- 交互 ---------- */
 
 function addNotice(text) {
-  const t = parseNotice(text.trim());
-  const dup = tasks.some(x => x.title === t.title && x.due === t.due);
-  if (dup) return { ok: false, msg: '已存在相同任务，未重复添加' };
-  tasks.push(t); save(); render();
-  return { ok: true, msg: `已添加：${t.title} · 截止 ${fmt(t.due)} · 来源 ${t.source}`, task: t };
+  const parsed = parseNotices(text.trim());
+  if (!parsed.length) return { ok: false, msg: '通知内容为空' };
+  let added = 0, skipped = 0;
+  parsed.forEach(t => {
+    const dup = tasks.some(x => x.title === t.title && x.due === t.due);
+    if (dup) { skipped++; return; }
+    tasks.push(t); added++;
+  });
+  save(); render();
+  const titles = parsed.slice(0, 3).map(t => t.title).join('、');
+  const more = parsed.length > 3 ? ` 等 ${parsed.length} 项` : '';
+  if (!added) return { ok: false, msg: '已存在相同任务，未重复添加' };
+  return {
+    ok: true,
+    count: added,
+    msg: parsed.length > 1
+      ? `这条通知拆出 ${parsed.length} 项：新增 ${added}，跳过重复 ${skipped} · ${titles}${more}`
+      : `已添加：${titles} · 截止 ${fmt(parsed[0].due)}`
+  };
 }
 
 document.getElementById('addBtn').addEventListener('click', () => {
@@ -324,7 +388,7 @@ document.getElementById('addBtn').addEventListener('click', () => {
   const res = addNotice(el.value);
   fb.className = 'feedback ' + (res.ok ? 'ok' : 'err');
   fb.textContent = res.msg;
-  if (res.ok) { el.value = ''; toast('任务已添加'); }
+  if (res.ok) { el.value = ''; toast(res.count > 1 ? `添加了 ${res.count} 条任务` : '任务已添加'); }
 });
 
 document.getElementById('noticeInput').addEventListener('keydown', e => {
@@ -342,7 +406,7 @@ document.getElementById('sampleBtn').addEventListener('click', () => {
 
 document.getElementById('clearBtn').addEventListener('click', () => {
   if (!confirm('确定清空全部任务吗？')) return;
-  tasks = []; save(); render();
+  tasks = []; expanded.clear(); save(); render();
   document.getElementById('parseFeedback').textContent = '';
   toast('已清空');
 });
@@ -362,6 +426,11 @@ document.getElementById('taskArea').addEventListener('click', e => {
   const t = tasks.find(x => x.id === btn.dataset.id);
   if (!t) return;
   const act = btn.dataset.act;
+  if (act === 'toggle') {
+    if (expanded.has(t.id)) expanded.delete(t.id); else expanded.add(t.id);
+    render();
+    return;
+  }
   if (act === 'start') { t.status = 'in_progress'; t.progress = Math.max(t.progress, 5); toast('已开始'); }
   else if (act === 'progress') { t.progress = Math.min(100, t.progress + 20); if (t.progress === 100) t.status = 'done'; else t.status = 'in_progress'; toast(`进度 ${t.progress}%`); }
   else if (act === 'finish') { t.status = 'done'; t.progress = 100; toast('已完成'); }
@@ -387,9 +456,80 @@ document.getElementById('taskArea').addEventListener('click', e => {
   else if (act === 'delete') {
     if (!confirm('删除这条任务？')) return;
     tasks = tasks.filter(x => x.id !== t.id);
+    expanded.delete(t.id);
     toast('已删除');
   }
   save(); render();
 });
 
 load(); render();
+
+/* ---------- Agent Runtime 连接（可选 Python 后端） ----------
+   同一份前端代码有两种运行方式：
+   1) 公网静态托管：没有 /api/*，自动降级为上面的浏览器本地演示；
+   2) python server.py：探测到 /api/health 后，对话走真实内核并回显 trace。
+   这样面试官点开在线链接能看 UI，本地起服务能看到完整 Agent 行为。   */
+(function () {
+  const statusEl = document.getElementById('runtimeStatus');
+  const input = document.getElementById('chatInput');
+  const btn = document.getElementById('chatBtn');
+  const reply = document.getElementById('chatReply');
+  const traceBox = document.getElementById('traceBox');
+  const traceEl = document.getElementById('chatTrace');
+  if (!statusEl || !btn) return;
+  let online = false;
+
+  function setStatus(text, ok) {
+    statusEl.textContent = text;
+    statusEl.className = 'runtime-status ' + (ok ? 'online' : 'offline');
+    btn.disabled = !ok;
+    input.disabled = !ok;
+    document.querySelectorAll('[data-chat]').forEach(b => { b.disabled = !ok; });
+    if (!ok) reply.textContent = '（未连接 Python 内核；下面的任务演示仍可正常使用）';
+  }
+
+  async function probe() {
+    try {
+      const res = await fetch('api/health', { headers: { Accept: 'application/json' } });
+      if (!res.ok) throw new Error('no api');
+      const data = await res.json();
+      if (!data.ok || !data.runtime) throw new Error('bad payload');
+      online = true;
+      setStatus('已连接 Agent Runtime · ' + data.runtime.llm + ' · ' + data.runtime.tools.length + ' 工具', true);
+      reply.textContent = '已连接。直接输入一句话，或点下面的示例。';
+    } catch (e) {
+      setStatus('纯浏览器模式（未启动 python server.py）', false);
+    }
+  }
+
+  async function send(text) {
+    if (!online || !text || !text.trim()) return;
+    btn.disabled = true;
+    reply.textContent = '思考中…';
+    try {
+      const res = await fetch('api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: text, chat_id: 'web', channel: 'http' })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '请求失败');
+      reply.textContent = data.reply || '（无回复）';
+      traceBox.hidden = false;
+      traceEl.textContent = (data.trace || []).map(e =>
+        '[' + e.step + '] ' + e.kind + (e.name ? ' · ' + e.name : '') + '  ' + (e.payload || '')
+      ).join('\n');
+    } catch (e) {
+      reply.textContent = '请求失败：' + e.message;
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  btn.addEventListener('click', () => send(input.value));
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') send(input.value); });
+  document.querySelectorAll('[data-chat]').forEach(b => {
+    b.addEventListener('click', () => { input.value = b.dataset.chat; send(b.dataset.chat); });
+  });
+  probe();
+})();

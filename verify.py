@@ -2,7 +2,8 @@
 """一键自检：验证项目是否处于健康状态。
 
 运行：python verify.py
-检查项：语法、单元测试、CLI 可用性、核心场景、持久化、去重。
+检查项：语法、单元测试、CLI 可用性、core 核心场景、Agent Runtime 工具循环、
+        定时主动性、渠道适配、前端脚本语法、交付文档完整性。
 """
 
 from __future__ import annotations
@@ -85,6 +86,66 @@ def main() -> None:
     record(sample.exists() and len([l for l in sample.read_text(encoding="utf-8").splitlines()
                                     if l.strip() and not l.startswith("#")]) >= 8,
            "示例通知完整")
+
+    # 6. Agent Runtime：组装、多轮工具调用、定时任务、渠道适配
+    from datetime import datetime
+    from deadline_bot.runtime import DeadlineAgent
+    from deadline_bot.runtime.channels import HTTPChannel
+
+    with tempfile.TemporaryDirectory() as tmp:
+        agent = DeadlineAgent(Path(tmp) / "runtime", prefer_rule=True)
+        info = agent.info()
+        record(info.llm == "rule-planner" and len(info.tools) == 7,
+               "Runtime 组装", f"{info.llm} / {len(info.tools)} 个工具")
+
+        multi = ("注意：\n"
+                 "1.《地理信息系统设计与应用》课程设计14周（12月5日）前交;\n"
+                 "2.《地理信息系统设计与应用》实验报告14周（12月13日）前交;\n"
+                 "3.Java语言大作业16周前（12月19日）交;\n"
+                 "4.遥感地学分析课程论文17周前交;")
+        result = agent.chat("帮我记一下：" + multi, channel="cli", chat_id="verify")
+        record("add_notices" in result.tools_used and len(agent.store.load()) == 4,
+               "Runtime 多事项通知入库", f"{len(agent.store.load())} 条 / {result.iterations} 轮")
+
+        kinds = {e.kind for e in result.trace.events}
+        record({"model", "tool_call", "tool_result", "final"} <= kinds,
+               "Runtime 工具调用链可回放")
+
+        plan = agent.chat("今天先做什么？", channel="cli", chat_id="verify")
+        record("get_plan" in plan.tools_used and "理由" in plan.reply,
+               "Runtime 内容排序工具")
+
+        agent.scheduler.add("every:3600", "生成今日任务进度与截止提醒")
+        replies = agent.tick(now=datetime(2026, 1, 5, 8, 0))
+        record(len(replies) == 1 and agent.bus.inbound_size == 0,
+               "Runtime 定时主动触发")
+
+        payload, status = HTTPChannel().handle(agent, {"text": "有哪些任务", "chat_id": "verify"})
+        record(status == 200 and payload["session_key"] == "http:verify" and payload["trace"],
+               "Runtime HTTP 渠道适配")
+
+        memory = agent.memory
+        for i in range(30):
+            memory.append("cli:verify", {"role": "user", "content": f"msg{i}"})
+        record(memory.compact("cli:verify") > 0 and memory.load("cli:verify")[0]["role"] == "system",
+               "Runtime 会话历史压缩")
+
+    # 7. 新入口脚本可运行
+    for script in ["agent_cli.py", "server.py"]:
+        code, out = run_cmd([script, "--help"])
+        record(code == 0 and "Traceback" not in out, f"{script} 入口")
+
+    # 8. 前端脚本语法（node 存在才检查）
+    import shutil
+    if shutil.which("node"):
+        proc = subprocess.run(["node", "--check", "docs/app.js"], cwd=ROOT,
+                              capture_output=True, text=True)
+        record(proc.returncode == 0, "前端 JS 语法", (proc.stderr or "").strip()[:80])
+
+    # 9. 交付文档齐备
+    docs_needed = ["README.md", "ARCHITECTURE.md", "RESUME_GUIDE.md", "VALIDATION.md"]
+    missing = [name for name in docs_needed if not (ROOT / name).is_file()]
+    record(not missing, "交付文档齐备", "缺少 " + ", ".join(missing) if missing else "4 份")
 
     passed = sum(1 for ok, _, _ in RESULTS if ok)
     total = len(RESULTS)
