@@ -3,7 +3,7 @@
 > 一个基于 **nanobot**（HKUDS/nanobot）工作区 skill 机制的二次开发项目。
 > 把学校/公司的通知文本变成结构化待办，自动识别截止日期，并在截止前分级提醒。
 
-**在线演示**：<https://lll1123-AKF.github.io/deadline-bot/>（无需安装，打开即用）
+**在线演示**：<https://deadline-bot-demo.app.workbuddy.host/?sharecode=5G7T6OER6J>（无需安装，打开即用）
 也可以直接双击 `docs/index.html` 在浏览器里体验，不需要任何服务。
 
 **仓库**：<https://github.com/lll1123-AKF/deadline-bot>

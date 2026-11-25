@@ -58,12 +58,13 @@
 
 ```
 项目仓库：https://github.com/lll1123-AKF/deadline-bot
-在线演示：https://lll1123-AKF.github.io/deadline-bot/
+在线演示：https://deadline-bot-demo.app.workbuddy.host/?sharecode=5G7T6OER6J
 ```
 
-- **仓库链接**：面试官看代码、README、测试、设计文档。按 `PUSH_GUIDE.md` 推送后生效。
-- **在线演示**：面试官不用装环境，点开就能粘贴通知、看排序和进度。推送后在仓库
-  Settings → Pages 开启（源选 `main`、目录选 `/docs`）即生效。
+- **仓库链接**：面试官看代码、README、测试、设计文档。已推送，直接可用。
+- **在线演示**：面试官不用装环境，点开就能粘贴通知、看排序和进度。**已发布上线，直接可用**，
+  不依赖 GitHub Pages。想再挂一份到自己域名下，可在仓库 Settings → Pages 开启
+  （源选 `main`、目录选 `/docs`），地址为 `https://lll1123-AKF.github.io/deadline-bot/`。
 
 两个链接都比「项目截图」有说服力。若只能放一个，优先放仓库链接。
 

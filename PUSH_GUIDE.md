@@ -96,7 +96,11 @@ git push -u origin main
 
 ---
 
-## 可选：把演示页发布成在线链接
+## 可选：再发布一份到 GitHub Pages
+
+项目已有一个**可直接使用的公开演示链接**：
+<https://deadline-bot-demo.app.workbuddy.host/?sharecode=5G7T6OER6J>
+下面只是把它额外发布到 GitHub Pages 的做法，**不做也不影响简历展示**。
 
 GitHub Pages（免费，和仓库绑定）。
 ⚠️ **从分支部署时，目录下拉只有 `/ (root)` 和 `/docs` 两项，不支持自定义目录名**，
