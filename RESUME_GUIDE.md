@@ -35,7 +35,7 @@
 ### 版本 A（稳妥，推荐先背这个）
 
 > **DeadlineBot｜通知任务 Agent Runtime**（个人项目，Python 3.11+ / 零第三方依赖）
-> <https://github.com/lll1123-AKF/deadline-bot> · [在线演示](https://deadline-bot-demo.app.workbuddy.host/?sharecode=5G7T6OER6J)
+> <https://github.com/lll1123-AKF/deadline-bot> · [在线演示](https://lll1123-AKF.github.io/deadline-bot/)
 >
 > - 参照 nanobot 运行时分层，独立实现消息总线、工具注册表（JSON Schema + 参数校验 + 错误回喂）、上下文构建、多轮 tool-calling 循环、会话记忆压缩与定时调度；内核与渠道解耦，支持 CLI / HTTP / nanobot 三种接入。
 > - 中文通知解析采用规则为主、可选 LLM 兜底双通道，覆盖 7 类日期表达与多事项自动拆分，解析不出日期如实标注「无截止日」；模型层默认使用零密钥的确定性规划器 `RulePlanner`（与真模型同 `chat()` 契约），使完整工具循环离线可回归。
@@ -69,13 +69,14 @@
 | 用途 | 链接 |
 | --- | --- |
 | 代码 | <https://github.com/lll1123-AKF/deadline-bot> |
-| 在线演示 | <https://deadline-bot-demo.app.workbuddy.host/?sharecode=5G7T6OER6J> |
+| 在线演示 | <https://lll1123-AKF.github.io/deadline-bot/> |
 | 架构说明 | 仓库内 `ARCHITECTURE.md`（建议面试前让面试官直接点这个文件） |
 
-> ⚠️ **重要**：GitHub 远程曾因网络问题停在旧提交，线上演示页也是上一版发布的。
-> 面试前务必确认：① 本地改动已 `push` 到 GitHub；② 在线演示已更新到最新 UI；
-> ③ README 顶部描述已是「独立 Agent Runtime」而不是旧的 skill 定位。
-> 具体步骤见 `PUSH_GUIDE.md`，以及本对话里给出的重新发布流程。
+> ✅ 两个链接都在你自己账号 `lll1123-AKF` 下，没有第三方托管域名。
+> 面试前确认三件事：① 本地改动已 `git push`（Pages 会自动重建）；
+> ② README 顶部描述是「独立 Agent Runtime」；③ CI 徽章为绿色。
+> 静态页永远是「浏览器模式」；要现场演示真实内核，双击 `start_server.bat`
+> 后访问 `http://127.0.0.1:8765/`。推送步骤见 `PUSH_GUIDE.md`。
 
 ---
 
@@ -83,7 +84,7 @@
 
 | 时间 | 做什么 | 讲什么 |
 | --- | --- | --- |
-| 0:00–0:40 | 打开在线演示，粘贴那条 4 事项通知 | 「真实场景里一条通知塞 4 件事，旧版会解析成 1 条。现在自动拆成 4 条，每条独立解析日期，卡片默认只显示名称和时间，详情折叠。」 |
+| 0:00–0:40 | 打开 GitHub Pages 演示页，粘贴那条 4 事项通知 | 「真实场景里一条通知塞 4 件事，旧版会解析成 1 条。现在自动拆成 4 条，每条独立解析日期，卡片默认只显示名称和时间，详情折叠。」 |
 | 0:40–1:20 | 点「详细信息」、切换「执行顺序 / 每日进度 / 截止提醒」 | 「排序不是按截止日，是按内容算可解释分数，每条都给理由；进度和截止是两个不同维度的问题。」 |
 | 1:20–2:00 | 打开 `ARCHITECTURE.md` 的五层图 | 「我拆了 nanobot 的核心链路：渠道 → 总线 → 上下文 → 工具循环 → 支撑服务，然后按同样分层自己实现了一遍。」 |
 | 2:00–3:20 | 本地 `python server.py`，刷新页面，在「Agent Runtime 对话」输入「记下通知并排一下顺序」，展开 Trace | 「这一栏不是前端复刻，是真实内核。看 Trace：模型选了两个工具、参数是什么、结果回填、第二轮才给最终回复。工具出错会变成文本回喂而不是崩掉。」 |

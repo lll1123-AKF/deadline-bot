@@ -96,13 +96,10 @@ git push -u origin main
 
 ---
 
-## 可选：再发布一份到 GitHub Pages
+## 推荐：用自己账号的 GitHub Pages 做公开演示
 
-项目已有一个**可直接使用的公开演示链接**：
-<https://deadline-bot-demo.app.workbuddy.host/?sharecode=5G7T6OER6J>
-下面只是把它额外发布到 GitHub Pages 的做法，**不做也不影响简历展示**。
-
-GitHub Pages（免费，和仓库绑定）。
+公开演示只放在**你自己 GitHub 账号下**的 Pages，不依赖任何第三方托管平台。
+GitHub Pages 免费，和仓库绑定，域名 `lll1123-AKF.github.io` 属于你的账号。
 ⚠️ **从分支部署时，目录下拉只有 `/ (root)` 和 `/docs` 两项，不支持自定义目录名**，
 所以本项目的演示网页专门放在 `docs/` 目录下。
 
@@ -114,7 +111,8 @@ GitHub Pages（免费，和仓库绑定）。
    https://lll1123-AKF.github.io/deadline-bot/
    ```
 
-这样简历上可以放两个链接：**仓库**（看代码）+ **在线演示**（直接体验）。
+这样简历上可以放两个链接，**都在你自己账号下**：**仓库**（看代码）+ **Pages 演示**（直接体验）。
+每次 `git push` 后 Pages 自动重建，不需要额外发布操作。
 
 ---
 

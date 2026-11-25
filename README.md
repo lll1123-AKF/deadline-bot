@@ -3,14 +3,11 @@
 > 把学校 / 公司通知变成可追踪、会排序、会主动提醒的任务。
 > **不是 nanobot 的分支或一个小 skill**：项目自带消息总线、工具注册表、上下文构建、多轮 tool-calling 循环、会话记忆与定时调度，可独立运行；nanobot 只是可选接入渠道之一。
 
-**在线演示**：<https://deadline-bot-demo.app.workbuddy.host/?sharecode=5G7T6OER6J>（打开即用，无需安装）
+**在线演示**：<https://lll1123-AKF.github.io/deadline-bot/>（GitHub Pages，和仓库同账号，打开即用）
 **仓库**：<https://github.com/lll1123-AKF/deadline-bot>
 
-![Python](https://img.shields.io/badge/Python-3.11%2B-blue)
-![License](https://img.shields.io/badge/license-MIT-green)
 [![CI](https://github.com/lll1123-AKF/deadline-bot/actions/workflows/ci.yml/badge.svg)](https://github.com/lll1123-AKF/deadline-bot/actions/workflows/ci.yml)
-![Tests](https://img.shields.io/badge/tests-73%20passed-brightgreen)
-![Deps](https://img.shields.io/badge/dependencies-0%20(stdlib%20only)-orange)
+**Python 3.11+ · MIT · 零第三方依赖 · 73 个单元测试**
 
 ---
 
@@ -52,10 +49,10 @@ agent > 从 1 条通知中拆出 3 项任务：新增 3，重复跳过 0
 设置 `OPENAI_API_KEY` 后会自动切换到 OpenAI-compatible 模型，主循环一行都不用改。
 
 **Windows 上最省事**：在项目根目录双击 `start_server.bat`，脚本自动检测 Python、启动内核并打开浏览器。
-⚠️ 必须访问 `http://127.0.0.1:8765/` 才会连上 Python 内核；公网静态页（GitHub Pages / 在线演示链接）
+⚠️ 必须访问 `http://127.0.0.1:8765/` 才会连上 Python 内核；公网静态页（GitHub Pages）
 永远是纯浏览器模式，不会连到你本机的服务——这是预期行为，不是故障。
 
-也可以直接双击 `docs/index.html`，或打开上面的在线演示链接——
+也可以直接双击 `docs/index.html`，或打开上面的 GitHub Pages 演示页——
 没有后端时前端自动降级为浏览器本地演示，功能照样可用。
 
 ---
@@ -178,7 +175,7 @@ python agent_cli.py --once "今天先做什么？"
 
 ```bash
 export OPENAI_API_KEY=sk-xxx
-export OPENAI_BASE_URL=https://api.deepseek.com/v1   # 可选
+export OPENAI_BASE_URL=<你的 OpenAI 兼容端点>/v1   # 可选
 export OPENAI_MODEL=deepseek-chat                     # 可选
 python cli.py add "下个月第二个工作周结束前把材料交了" --mode llm
 ```

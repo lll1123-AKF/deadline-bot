@@ -127,6 +127,6 @@ Python 端与 JS 端拆分结果一致，任务卡片默认只显示名称+时�
 
 - [ ] `OPENAI_API_KEY` 环境下的真实模型 tool-calling 联调（当前只验证协议构造与错误降级）
 - [ ] GitHub 远程是否已同步到最新提交（曾因网络故障停在旧提交）
-- [ ] 在线演示链接是否已更新到含「Agent Runtime 对话」面板的最新 UI
-- [ ] GitHub Pages `/docs` 是否开启（在线链接走的是 WorkBuddy 静态托管，Pages 只是备选）
+- [ ] GitHub Pages `/docs` 已开启且页面含「Agent Runtime 对话」面板（每次 push 自动重建）
+- [ ] 简历与文档中不出现第三方托管域名，公开链接只有 github.com 与 github.io
 - [ ] 长时间运行下的会话文件增长与压缩效果
