@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DeadlineBot — 通知转任务助手</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="wrap topbar-inner">
+    <div class="brand">
+      <span class="logo">DB</span>
+      <div>
+        <h1>DeadlineBot</h1>
+        <p>把学校 / 公司的通知，变成会提醒你的任务</p>
+      </div>
+    </div>
+    <div class="top-links">
+      <a id="repoLink" href="https://github.com/lll1123-AKF/deadline-bot" target="_blank" rel="noopener">GitHub 仓库 →</a>
+      <span class="badge">交互演示</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="notice-strip">
+    这是浏览器里的交互演示，数据只存在你的浏览器中。完整的 Python 实现、单元测试与设计说明见
+    <a id="repoLink2" href="https://github.com/lll1123-AKF/deadline-bot" target="_blank" rel="noopener">GitHub 仓库</a>。
+  </div>
+
+  <section class="card input-card">
+    <div class="card-head">
+      <h2>粘贴一条通知</h2>
+      <span class="hint">支持「本周五」「3天内」「12月5日前」等中文日期</span>
+    </div>
+    <div class="input-row">
+      <textarea id="noticeInput" rows="2" placeholder="例如：班主任通知：本周五下午5点前交社会实践报告，请班长统一收齐。"></textarea>
+      <button id="addBtn" class="btn primary">解析并添加</button>
+    </div>
+    <div id="parseFeedback" class="feedback"></div>
+    <div class="quick-row">
+      <button id="sampleBtn" class="btn ghost">加载 8 条示例通知</button>
+      <button id="clearBtn" class="btn ghost danger">清空全部</button>
+      <span class="spacer"></span>
+      <span id="countLabel" class="count">0 条任务</span>
+    </div>
+  </section>
+
+  <div class="tabs" role="tablist">
+    <button class="tab active" data-view="plan">执行顺序 <span class="tab-sub">按内容排序</span></button>
+    <button class="tab" data-view="daily">每日进度 <span class="tab-sub">完成率</span></button>
+    <button class="tab" data-view="due">截止提醒 <span class="tab-sub">按时间分级</span></button>
+  </div>
+
+  <section id="summaryBar" class="summary-bar"></section>
+  <section id="taskArea" class="task-area"></section>
+
+  <section class="card about-card">
+    <h2>这个演示还原了项目的哪些能力</h2>
+    <div class="feature-grid">
+      <div class="feature"><h3>通知解析</h3><p>从自然语言中抽取标题、截止日、来源、类别与优先级。规则优先，覆盖 7 类中文日期表达。</p></div>
+      <div class="feature"><h3>内容排序</h3><p>综合优先级、类别提前量、紧迫度、进行中状态计算「该先做分数」，每条都给出理由。</p></div>
+      <div class="feature"><h3>进度跟踪</h3><p>完成率、进度条、状态分布、今日聚焦，随时开始 / 改进度 / 标记完成。</p></div>
+      <div class="feature"><h3>随时可改</h3><p>改优先级、改截止日（支持自然语言）、加备注、删除，排序实时重算。</p></div>
+    </div>
+    <p class="about-note">真实项目是 <strong>基于 nanobot 工作区 Skill 机制</strong>的 Python 二次开发：nanobot 负责对话、记忆与定时触发，本项目提供领域能力。本页用 JavaScript 复刻了同一套逻辑，便于在线体验。</p>
+  </section>
+
+  <footer>
+    <span>DeadlineBot · 教学演示项目 · 非 nanobot 官方项目</span>
+    <span>本地演示，无需登录，数据不上传</span>
+  </footer>
+</main>
+
+<div id="toast" class="toast"></div>
+<script src="app.js"></script>
+</body>
+</html>
