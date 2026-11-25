@@ -126,6 +126,7 @@ GitHub Pages（免费，和仓库绑定）。
 | 找不到右上角的「+」 | 新版 Dashboard 改了布局：点左侧边栏的「+」，或直接打开 <https://github.com/new> |
 | `Repository not found` | 仓库没建、名字填错，或选了 Private 但没权限；核对 URL |
 | `failed to push / rejected` | 创建仓库时勾了 README 导致历史冲突；删掉重建空仓库，或 `git pull --rebase origin main` |
+| `fatal: ... Recv failure: Connection was reset` / `CONNECT tunnel failed 502` | **不是账号问题，是网络**。常见原因是环境里的 `HTTPS_PROXY` 把 `github.com` 导到了不通的代理，或是网络瞬时波动。先自查：`echo %HTTPS_PROXY%`（cmd）/ `echo $https_proxy`（Git Bash）。若值不为空，清空后重试：<br>Git Bash：`env -u http_proxy -u https_proxy -u HTTP_PROXY -u HTTPS_PROXY git push -u origin main`<br>cmd：依次执行 `set HTTP_PROXY=` `set HTTPS_PROXY=` `set http_proxy=` `set https_proxy=` 再 `git push -u origin main`<br>仍不通就开代理软件的全局/TUN 模式，或换手机热点后重新双击 `push.bat` |
 | `Authentication failed` | 密码栏要填 token 不是账号密码；或用 GCM 浏览器登录 |
 | 推送后 README 没显示 | 确认文件名是 `README.md`，且已 commit + push |
 | 想改仓库描述 | 仓库首页右侧 ⚙️ 旁边可编辑 About |
