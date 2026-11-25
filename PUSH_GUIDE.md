@@ -118,6 +118,7 @@ GitHub Pages（免费，和仓库绑定）。
 
 | 现象 | 原因 / 解决 |
 |---|---|
+| 双击 `push.bat` 满屏乱码、一堆「不是内部或外部命令」 | 旧版脚本里写了中文，cmd 默认按 GBK 解读 UTF-8 中文，把命令行也拆坏了。**脚本已重写为纯英文版**，重新双击即可；输出是英文属正常，看到 `SUCCESS` 就是成功 |
 | 找不到右上角的「+」 | 新版 Dashboard 改了布局：点左侧边栏的「+」，或直接打开 <https://github.com/new> |
 | `Repository not found` | 仓库没建、名字填错，或选了 Private 但没权限；核对 URL |
 | `failed to push / rejected` | 创建仓库时勾了 README 导致历史冲突；删掉重建空仓库，或 `git pull --rebase origin main` |
