@@ -26,13 +26,11 @@
    - 选择 **Public**（公开，面试官才能看到）
    - ⚠️ **不要**勾选 `Add a README file`、`.gitignore`、`Choose a license` —— 本地已经写好了，勾了会导致推送冲突。
 4. 点 **Create repository**。
-5. 创建成功后，页面会显示一个地址，形如：
-   ```
-   https://github.com/lll1123-AKF/deadline-bot.git
-   ```
-   把它复制下来。
+5. 创建成功后页面会显示地址 `https://github.com/lll1123-AKF/deadline-bot.git`。
+   **这个地址已经写进推送脚本里了，不用复制**，直接进第 2 步即可。
 
-> 如果仓库名 `deadline-bot` 已被占用，改成 `deadline-bot-agent` 之类，并记住新名字。
+> 如果仓库名 `deadline-bot` 已被占用，改成 `deadline-bot-agent` 之类，
+> 并在运行脚本时把新地址作为参数传进去：`bash push.sh https://github.com/lll1123-AKF/新名字.git`
 
 ---
 
@@ -49,7 +47,7 @@ bash push.sh
 1. 配置 `credential.helper=manager`（启用浏览器登录）
 2. 初始化本地 git 仓库（如果还没有）
 3. 添加所有文件、创建首次提交
-4. 设置远程仓库地址（用你第 1 步复制的 URL）
+4. 设置远程仓库地址（默认 `https://github.com/lll1123-AKF/deadline-bot.git`）
 5. 执行推送
 
 **Windows 用户也可以直接双击 `push.bat`。**
