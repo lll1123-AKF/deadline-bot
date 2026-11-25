@@ -26,7 +26,8 @@
 <main class="wrap">
   <div class="notice-strip">
     在线页面默认走浏览器本地演示，数据只存在你的浏览器中，不会上传。
-    在仓库里运行 <code>python server.py</code> 后用同一网址打开，下面的「Agent Runtime 对话」会自动连上真实的 Python 内核。
+    想连上真实的 Python 内核：在项目目录双击 <code>start_server.bat</code>（或运行 <code>python server.py</code>），
+    然后打开 <code>http://127.0.0.1:8765/</code> —— <strong>不是当前这个公网网址</strong>，下面的「Agent Runtime 对话」才会自动连上内核。
     完整源码、单测与架构说明见
     <a id="repoLink2" href="https://github.com/lll1123-AKF/deadline-bot" target="_blank" rel="noopener">GitHub 仓库</a>。
   </div>
@@ -57,7 +58,8 @@
     <p class="runtime-hint">
       这一栏不走浏览器里的复刻逻辑，而是把消息发给 Python 内核：
       消息总线 → 上下文构建 → 多轮 tool-calling 循环 → 工具注册表 → 回复，
-      并把每一轮的工具调用链回显出来。运行 <code>python server.py</code> 后自动启用。
+      并把每一轮的工具调用链回显出来。本地启动 <code>python server.py</code> 并访问
+      <code>http://127.0.0.1:8765/</code> 后自动启用；公网静态页始终保持纯浏览器模式。
     </p>
     <div class="runtime-row">
       <input id="chatInput" type="text" placeholder="例如：今天先做什么？">
