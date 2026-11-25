@@ -70,7 +70,7 @@ bash push.sh
 打开 `https://github.com/lll1123-AKF/deadline-bot`，应该能看到：
 
 - README.md 渲染出来的项目介绍
-- `web/` 目录里的在线演示页面源码
+- `docs/` 目录里的在线演示页面源码
 - `RESUME_GUIDE.md`、`VALIDATION.md` 等文档
 
 把这个链接写进简历即可。
@@ -98,11 +98,13 @@ git push -u origin main
 
 ## 可选：把演示页发布成在线链接
 
-GitHub Pages（免费，和仓库绑定）：
+GitHub Pages（免费，和仓库绑定）。
+⚠️ **从分支部署时，目录下拉只有 `/ (root)` 和 `/docs` 两项，不支持自定义目录名**，
+所以本项目的演示网页专门放在 `docs/` 目录下。
 
 1. 仓库页面 → **Settings** → 左侧 **Pages**
 2. **Source** 选 `Deploy from a branch`
-3. **Branch** 选 `main`，目录选 `/web`，点 **Save**
+3. **Branch** 选 `main`，目录选 **`/docs`**，点 **Save**
 4. 等 1-2 分钟，访问：
    ```
    https://lll1123-AKF.github.io/deadline-bot/

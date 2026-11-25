@@ -4,7 +4,7 @@
 > 把学校/公司的通知文本变成结构化待办，自动识别截止日期，并在截止前分级提醒。
 
 **在线演示**：<https://lll1123-AKF.github.io/deadline-bot/>（无需安装，打开即用）
-也可以直接双击 `web/index.html` 在浏览器里体验，不需要任何服务。
+也可以直接双击 `docs/index.html` 在浏览器里体验，不需要任何服务。
 
 **仓库**：<https://github.com/lll1123-AKF/deadline-bot>
 
@@ -152,6 +152,10 @@ deadline-bot/
 │   ├── parser.py             # 通知解析：rule + llm 双模式
 │   ├── store.py              # JSON 持久化（原子写 + 去重）
 │   └── reminder.py           # 分级提醒报告
+├── docs/                     # 在线演示页（GitHub Pages 发布源）
+│   ├── index.html
+│   ├── style.css
+│   └── app.js
 ├── data/
 │   ├── sample_notices.txt    # 学生 + 上班族示例通知
 │   └── tasks.json            # 运行后生成，可删除
